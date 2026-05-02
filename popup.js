@@ -128,7 +128,7 @@ function renderList() {
       </div>
       ${weatherHtml}
       <div class="tz-time-block">
-        <div class="tz-time">${timeStr}<span class="ext-icon">↗</span></div>
+        <div class="tz-time">${timeStr}</div>
         <div class="tz-date">${dateStr}</div>
       </div>`;
 
