@@ -176,6 +176,32 @@
       vertical-align: middle;
     }
 
+    /* Weather badge */
+    .tz-weather {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      border-radius: 6px;
+      padding: 3px 5px;
+      transition: background 0.12s;
+      text-decoration: none;
+      gap: 1px;
+    }
+
+    .tz-weather:hover { background: #313244; }
+
+    .tz-weather-temp {
+      font-size: 10px;
+      color: #a6adc8;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+
     .divider {
       height: 1px;
       background: #1e1e2e;

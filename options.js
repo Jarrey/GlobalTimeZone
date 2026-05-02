@@ -1,12 +1,15 @@
 let timezones = [];
 let primaryIndex = 0;
 let timeFormat = '24h';
+let weatherApiKey = '';
 
 const tzList = document.getElementById('tzList');
 const addTzBtn = document.getElementById('addTzBtn');
 const saveBtn = document.getElementById('saveBtn');
 const saveMsg = document.getElementById('saveMsg');
 const timeFormatInputs = document.querySelectorAll('input[name="timeFormat"]');
+const weatherApiKeyInput = document.getElementById('weatherApiKey');
+const weatherStatusEl = document.getElementById('weatherStatus');
 
 const DEFAULT_TZ = [
   { zone: 'Asia/Shanghai',       label: '北京' },
@@ -128,20 +131,27 @@ timeFormatInputs.forEach(input => {
 });
 
 saveBtn.addEventListener('click', () => {
-  chrome.storage.sync.set({ timezones, primaryIndex, timeFormat }, () => {
+  weatherApiKey = weatherApiKeyInput.value.trim();
+  chrome.storage.sync.set({ timezones, primaryIndex, timeFormat, weatherApiKey }, () => {
     saveMsg.classList.add('show');
     setTimeout(() => saveMsg.classList.remove('show'), 2000);
-    // Notify background to update badge
+    // Notify background to update badge and weather
     chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' });
+    chrome.runtime.sendMessage({ type: 'REFRESH_WEATHER' });
   });
 });
 
 // Load saved data
-chrome.storage.sync.get(['timezones', 'primaryIndex', 'timeFormat'], result => {
+chrome.storage.sync.get(['timezones', 'primaryIndex', 'timeFormat', 'weatherApiKey'], result => {
   timezones = result.timezones || DEFAULT_TZ;
   primaryIndex = result.primaryIndex || 0;
   timeFormat = result.timeFormat || '24h';
+  weatherApiKey = result.weatherApiKey || '';
   const activeInput = document.querySelector(`input[name="timeFormat"][value="${timeFormat}"]`);
   if (activeInput) activeInput.checked = true;
+  if (weatherApiKeyInput) weatherApiKeyInput.value = weatherApiKey;
+  if (weatherApiKey && weatherStatusEl) {
+    weatherStatusEl.textContent = 'API key set — weather data will refresh automatically.';
+  }
   renderRows();
 });

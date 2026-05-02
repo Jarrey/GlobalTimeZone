@@ -240,6 +240,45 @@
     }
 
     option { background: #1e1e2e; }
+
+    /* Weather API key section */
+    .api-key-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .api-key-input {
+      flex: 1;
+      min-width: 200px;
+      background: #0f0f14;
+      border: 1px solid #313244;
+      border-radius: 6px;
+      color: #cdd6f4;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-family: monospace;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .api-key-input:focus { border-color: #89b4fa; }
+
+    .api-key-link {
+      font-size: 12px;
+      color: #89b4fa;
+      text-decoration: none;
+    }
+
+    .api-key-link:hover { text-decoration: underline; }
+
+    .weather-status {
+      font-size: 12px;
+      color: #6c7086;
+      margin-top: 8px;
+      line-height: 1.6;
+    }
   </style>
 </head>
 <body>
@@ -268,6 +307,15 @@
         Add timezone
       </button>
       <p class="help-text">Drag the left handle to reorder. Click "Primary" to set a timezone for the toolbar icon.</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Weather (OpenWeatherMap)</div>
+      <div class="api-key-row">
+        <input class="api-key-input" type="password" id="weatherApiKey" placeholder="Paste your API key here" autocomplete="off" />
+        <a class="api-key-link" href="https://home.openweathermap.org/api_keys" target="_blank">Get free API key ↗</a>
+      </div>
+      <p class="weather-status" id="weatherStatus">Enter an API key to enable live weather display for each timezone.</p>
     </div>
 
     <div style="height: 60px;"></div>

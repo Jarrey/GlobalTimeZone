@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Global Time Zone",
-  "version": "1.0.0",
-  "description": "Display multiple world time zones with DST support",
+  "version": "1.1.0",
+  "description": "Display multiple world time zones with DST support and live weather",
   "permissions": ["storage", "alarms", "tabs"],
+  "host_permissions": ["https://api.openweathermap.org/*"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

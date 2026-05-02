@@ -1,8 +1,27 @@
 const COLORS = ['color-0','color-1','color-2','color-3','color-4','color-5','color-6','color-7'];
 
+// Map OWM icon code prefix to emoji
+const WEATHER_EMOJI = {
+  '01': '☀️',
+  '02': '⛅',
+  '03': '☁️',
+  '04': '☁️',
+  '09': '🌧️',
+  '10': '🌦️',
+  '11': '⛈️',
+  '13': '❄️',
+  '50': '🌫️',
+};
+
+function weatherEmoji(iconCode) {
+  const prefix = iconCode ? iconCode.slice(0, 2) : '';
+  return WEATHER_EMOJI[prefix] || '🌡️';
+}
+
 let timezones = [];
 let timer = null;
 let timeFormat = '24h';
+let weatherCache = {};
 
 function formatTime(tz) {
   try {
@@ -87,6 +106,15 @@ function renderList() {
       night: '🌙'
     }[dayState] || '☀️';
 
+    const w = weatherCache[tz.zone];
+    const owmUrl = w ? `https://openweathermap.org/city/${w.cityId}` : '';
+    const weatherHtml = w
+      ? `<span class="tz-weather" title="${escapeHtml(w.desc)}" data-owm-url="${escapeHtml(owmUrl)}">
+           <span>${weatherEmoji(w.icon)}</span>
+           <span class="tz-weather-temp">${w.temp}°</span>
+         </span>`
+      : '';
+
     const item = document.createElement('div');
     item.className = `tz-item ${dayState}`;
     item.title = 'Open timeanddate.com for this timezone';
@@ -98,12 +126,18 @@ function renderList() {
         <div class="tz-city">${escapeHtml(tz.label || tz.zone)}</div>
         <div class="tz-label">${escapeHtml(tz.zone)}${isDST ? '<span class="tz-dst-badge">DST</span>' : ''}</div>
       </div>
+      ${weatherHtml}
       <div class="tz-time-block">
         <div class="tz-time">${timeStr}<span class="ext-icon">↗</span></div>
         <div class="tz-date">${dateStr}</div>
       </div>`;
 
-    item.addEventListener('click', () => {
+    item.addEventListener('click', (e) => {
+      const weatherEl = e.target.closest('[data-owm-url]');
+      if (weatherEl) {
+        chrome.tabs.create({ url: weatherEl.dataset.owmUrl });
+        return;
+      }
       chrome.tabs.create({ url });
     });
 
@@ -148,20 +182,29 @@ document.getElementById('settingsBtn').addEventListener('click', () => {
 chrome.storage.sync.get(['timezones', 'timeFormat'], (result) => {
   timezones = result.timezones || [];
   timeFormat = result.timeFormat || '24h';
-  renderList();
-  timer = setInterval(tick, 1000);
-  // Wake the service worker and refresh icon when popup opens
-  chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
+  // Load cached weather data before first render
+  chrome.storage.local.get('weatherCache', (local) => {
+    weatherCache = local.weatherCache || {};
+    renderList();
+    timer = setInterval(tick, 1000);
+    chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
+  });
 });
 
-chrome.storage.onChanged.addListener((changes) => {
+chrome.storage.onChanged.addListener((changes, area) => {
   let shouldRender = false;
-  if (changes.timezones) {
-    timezones = changes.timezones.newValue || [];
-    shouldRender = true;
+  if (area === 'sync') {
+    if (changes.timezones) {
+      timezones = changes.timezones.newValue || [];
+      shouldRender = true;
+    }
+    if (changes.timeFormat) {
+      timeFormat = changes.timeFormat.newValue || '24h';
+      shouldRender = true;
+    }
   }
-  if (changes.timeFormat) {
-    timeFormat = changes.timeFormat.newValue || '24h';
+  if (area === 'local' && changes.weatherCache) {
+    weatherCache = changes.weatherCache.newValue || {};
     shouldRender = true;
   }
   if (shouldRender) renderList();
