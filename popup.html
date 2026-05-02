@@ -61,7 +61,7 @@
       align-items: center;
       padding: 10px 16px;
       border-radius: 0;
-      transition: background 0.12s;
+      transition: background 0.12s, color 0.12s;
       cursor: default;
       gap: 12px;
       position: relative;
@@ -71,9 +71,36 @@
       cursor: pointer;
     }
 
-    .tz-item:hover { background: #181825; }
+    /* ── Day / Night row theming ── */
+    .tz-item.day {
+      background: linear-gradient(100deg, #1e2517 55%, #161a22 100%);
+      border-left: 3px solid #e8b84b;
+    }
+    .tz-item.night {
+      background: linear-gradient(100deg, #0d1224 55%, #111620 100%);
+      border-left: 3px solid #7090f0;
+    }
 
-    .tz-item:hover .tz-time { color: #89b4fa; }
+    /* Unified hover — removes day/night tint to signal interaction */
+    .tz-item.day:hover,
+    .tz-item.night:hover { background: #1e2135; border-left-color: #89b4fa; }
+
+    .tz-item.day:hover .tz-time,
+    .tz-item.night:hover .tz-time { color: #89b4fa; }
+
+    /* City name */
+    .tz-item.day   .tz-city { color: #fef5d6; }
+    .tz-item.night .tz-city { color: #c4d0f5; }
+
+    /* Large clock time */
+    .tz-item.day   .tz-time { color: #e8b84b; }
+    .tz-item.night .tz-time { color: #7090f0; }
+
+    /* IANA zone label + small date */
+    .tz-item.day   .tz-label,
+    .tz-item.day   .tz-date  { color: #9a8c50; }
+    .tz-item.night .tz-label,
+    .tz-item.night .tz-date  { color: #4d6490; }
 
     .ext-icon {
       font-size: 11px;
@@ -90,6 +117,16 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .tz-state-icon {
+      width: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      line-height: 1;
       flex-shrink: 0;
     }
 
@@ -194,7 +231,7 @@
   <div class="header">
     <span class="header-title">🌐 Global Time Zone</span>
     <div class="header-actions">
-      <button class="icon-btn" id="settingsBtn" title="设置">
+      <button class="icon-btn" id="settingsBtn" title="Settings">
         <svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 018.5 12 3.5 3.5 0 0112 8.5a3.5 3.5 0 013.5 3.5 3.5 3.5 0 01-3.5 3.5m7.43-2.92c.04-.34.07-.69.07-1.08s-.03-.74-.07-1.08l2.32-1.82c.21-.16.27-.46.13-.7l-2.2-3.81c-.13-.24-.42-.32-.66-.24l-2.74 1.1c-.57-.43-1.18-.8-1.86-1.06L14.5 2.42C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.5.42l-.41 2.91C8.47 5.63 7.86 6 7.29 6.43L4.55 5.33c-.24-.08-.53 0-.66.24L1.69 9.38c-.13.24-.08.54.13.7L4.14 11.9c-.04.34-.07.69-.07 1.08s.03.74.07 1.08L1.82 15.88c-.21.16-.27.46-.13.7l2.2 3.81c.13.24.42.32.66.24l2.74-1.1c.57.43 1.18.8 1.86 1.06l.41 2.91c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.41-2.91c.68-.26 1.29-.63 1.86-1.06l2.74 1.1c.24.08.53 0 .66-.24l2.2-3.81c.13-.24.08-.54-.13-.7l-2.32-1.82z"/></svg>
       </button>
     </div>

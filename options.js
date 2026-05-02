@@ -1,10 +1,12 @@
 let timezones = [];
 let primaryIndex = 0;
+let timeFormat = '24h';
 
 const tzList = document.getElementById('tzList');
 const addTzBtn = document.getElementById('addTzBtn');
 const saveBtn = document.getElementById('saveBtn');
 const saveMsg = document.getElementById('saveMsg');
+const timeFormatInputs = document.querySelectorAll('input[name="timeFormat"]');
 
 const DEFAULT_TZ = [
   { zone: 'Asia/Shanghai',       label: '北京' },
@@ -119,8 +121,14 @@ addTzBtn.addEventListener('click', () => {
   tzList.lastElementChild && tzList.lastElementChild.scrollIntoView({ behavior: 'smooth' });
 });
 
+timeFormatInputs.forEach(input => {
+  input.addEventListener('change', e => {
+    timeFormat = e.target.value;
+  });
+});
+
 saveBtn.addEventListener('click', () => {
-  chrome.storage.sync.set({ timezones, primaryIndex }, () => {
+  chrome.storage.sync.set({ timezones, primaryIndex, timeFormat }, () => {
     saveMsg.classList.add('show');
     setTimeout(() => saveMsg.classList.remove('show'), 2000);
     // Notify background to update badge
@@ -129,8 +137,11 @@ saveBtn.addEventListener('click', () => {
 });
 
 // Load saved data
-chrome.storage.sync.get(['timezones', 'primaryIndex'], result => {
+chrome.storage.sync.get(['timezones', 'primaryIndex', 'timeFormat'], result => {
   timezones = result.timezones || DEFAULT_TZ;
   primaryIndex = result.primaryIndex || 0;
+  timeFormat = result.timeFormat || '24h';
+  const activeInput = document.querySelector(`input[name="timeFormat"][value="${timeFormat}"]`);
+  if (activeInput) activeInput.checked = true;
   renderRows();
 });

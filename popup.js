@@ -2,16 +2,18 @@ const COLORS = ['color-0','color-1','color-2','color-3','color-4','color-5','col
 
 let timezones = [];
 let timer = null;
+let timeFormat = '24h';
 
 function formatTime(tz) {
   try {
     const now = new Date();
+    const use12 = timeFormat === '12h';
     const timeStr = now.toLocaleTimeString('en-US', {
       timeZone: tz,
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      hour12: false
+      hour12: use12
     });
     const dateStr = now.toLocaleDateString('zh-CN', {
       timeZone: tz,
@@ -43,6 +45,23 @@ function tzUrl(zone) {
   return `https://www.timeanddate.com/worldclock/results.html?query=${encodeURIComponent(city)}`;
 }
 
+function getTimeOfDay(tz) {
+  try {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', {
+      timeZone: tz,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    const hour = parseInt(timeStr.split(':')[0], 10);
+    if (hour >= 6 && hour < 18) return 'day';
+    return 'night';
+  } catch (e) {
+    return 'night';
+  }
+}
+
 function renderList() {
   const container = document.getElementById('timezoneList');
   container.innerHTML = '';
@@ -61,13 +80,20 @@ function renderList() {
     const { timeStr, dateStr, isDST } = formatTime(tz.zone);
     const colorClass = COLORS[i % COLORS.length];
     const url = tzUrl(tz.zone);
+    const dayState = getTimeOfDay(tz.zone);
+
+    const stateIcon = {
+      day: '☀️',
+      night: '🌙'
+    }[dayState] || '☀️';
 
     const item = document.createElement('div');
-    item.className = 'tz-item';
-    item.title = '点击在 timeanddate.com 查看详情';
+    item.className = `tz-item ${dayState}`;
+    item.title = 'Open timeanddate.com for this timezone';
     item.dataset.url = url;
     item.innerHTML = `
       <div class="tz-dot ${colorClass}"></div>
+      <div class="tz-state-icon">${stateIcon}</div>
       <div class="tz-info">
         <div class="tz-city">${escapeHtml(tz.label || tz.zone)}</div>
         <div class="tz-label">${escapeHtml(tz.zone)}${isDST ? '<span class="tz-dst-badge">DST</span>' : ''}</div>
@@ -97,11 +123,15 @@ function escapeHtml(str) {
 }
 
 function tick() {
-  // Only re-render time values, not the whole list
+  // Only re-render time values and time-of-day state, not the whole list
   const items = document.querySelectorAll('.tz-item');
   timezones.forEach((tz, i) => {
     if (!items[i]) return;
     const { timeStr, dateStr, isDST } = formatTime(tz.zone);
+    const dayState = getTimeOfDay(tz.zone);
+    items[i].classList.remove('day', 'dawn', 'dusk', 'night');
+    items[i].classList.add(dayState);
+
     const timeEl = items[i].querySelector('.tz-time');
     const dateEl = items[i].querySelector('.tz-date');
     const labelEl = items[i].querySelector('.tz-label');
@@ -115,8 +145,9 @@ document.getElementById('settingsBtn').addEventListener('click', () => {
   chrome.runtime.openOptionsPage();
 });
 
-chrome.storage.sync.get(['timezones'], (result) => {
+chrome.storage.sync.get(['timezones', 'timeFormat'], (result) => {
   timezones = result.timezones || [];
+  timeFormat = result.timeFormat || '24h';
   renderList();
   timer = setInterval(tick, 1000);
   // Wake the service worker and refresh icon when popup opens
@@ -124,8 +155,14 @@ chrome.storage.sync.get(['timezones'], (result) => {
 });
 
 chrome.storage.onChanged.addListener((changes) => {
+  let shouldRender = false;
   if (changes.timezones) {
     timezones = changes.timezones.newValue || [];
-    renderList();
+    shouldRender = true;
   }
+  if (changes.timeFormat) {
+    timeFormat = changes.timeFormat.newValue || '24h';
+    shouldRender = true;
+  }
+  if (shouldRender) renderList();
 });

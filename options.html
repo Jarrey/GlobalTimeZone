@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Global Time Zone — 设置</title>
+  <title>Global Time Zone — Settings</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -55,6 +55,33 @@
       text-transform: uppercase;
       letter-spacing: 0.8px;
       margin-bottom: 16px;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .setting-row label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #cdd6f4;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .setting-row input[type="radio"] {
+      accent-color: #89b4fa;
+    }
+
+    .setting-info {
+      font-size: 12px;
+      color: #6c7086;
+      line-height: 1.6;
     }
 
     /* Timezone list */
@@ -219,28 +246,36 @@
   <div class="page-wrap">
     <div class="page-header">
       <div>
-        <div class="page-title">🌐 Global Time Zone 设置</div>
-        <div class="page-subtitle">配置要显示的时区列表</div>
+        <div class="page-title">🌐 Global Time Zone Settings</div>
+        <div class="page-subtitle">Configure the time zones shown in the popup.</div>
       </div>
     </div>
 
     <div class="section">
-      <div class="section-title">时区列表</div>
+      <div class="section-title">Time format</div>
+      <div class="setting-row">
+        <label><input type="radio" name="timeFormat" value="24h" checked /> 24-hour</label>
+        <label><input type="radio" name="timeFormat" value="12h" /> 12-hour</label>
+      </div>
+      <p class="setting-info">Choose how times are displayed across the popup and toolbar icon.</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Timezone list</div>
       <div class="tz-list" id="tzList"></div>
       <button class="add-tz-btn" id="addTzBtn">
         <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-        添加时区
+        Add timezone
       </button>
-      <p class="help-text">拖动左侧图标可以调整排列顺序。点击"主显示"按钮将该时区设置为图标栏显示的时间。</p>
+      <p class="help-text">Drag the left handle to reorder. Click "Primary" to set a timezone for the toolbar icon.</p>
     </div>
 
     <div style="height: 60px;"></div>
   </div>
 
   <div class="save-bar">
-    <span class="save-msg" id="saveMsg">✓ 已保存</span>
-    <button class="save-btn" id="saveBtn">保存设置</button>
-  </div>
+    <span class="save-msg" id="saveMsg">✓ Saved</span>
+    <button class="save-btn" id="saveBtn">Save settings</button>
 
   <script src="timezones.js"></script>
   <script src="options.js"></script>

@@ -4,20 +4,29 @@
 
 function getPrimaryTime() {
   return new Promise(resolve => {
-    chrome.storage.sync.get(['timezones', 'primaryIndex'], result => {
+    chrome.storage.sync.get(['timezones', 'primaryIndex', 'timeFormat'], result => {
       const timezones = result.timezones || [];
       const idx = result.primaryIndex || 0;
       const tz = timezones[idx];
+      const use12 = result.timeFormat === '12h';
       if (!tz) return resolve(null);
       try {
         const now = new Date();
-        const timeStr = now.toLocaleTimeString('en-US', {
+        let timeStr = now.toLocaleTimeString('en-US', {
           timeZone: tz.zone,
-          hour: '2-digit',
+          hour: use12 ? 'numeric' : '2-digit',
           minute: '2-digit',
-          hour12: false
+          hour12: use12
         });
-        resolve({ zone: tz.zone, label: tz.label || tz.zone, timeStr });
+        let ampm = '';
+        if (use12) {
+          const match = timeStr.match(/\s*(AM|PM)$/i);
+          if (match) {
+            ampm = match[1];
+            timeStr = timeStr.replace(/\s*(AM|PM)$/i, '');
+          }
+        }
+        resolve({ zone: tz.zone, label: tz.label || tz.zone, timeStr, ampm });
       } catch (e) {
         resolve(null);
       }
@@ -34,12 +43,13 @@ async function updateIcon() {
   }
 
   // Badge overlay — rendered natively by Chrome, much larger than canvas text
-  chrome.action.setBadgeText({ text: info.timeStr });           // e.g. "14:30"
+  chrome.action.setBadgeText({ text: info.timeStr });           // e.g. "14:30" or "3:30"
   chrome.action.setBadgeBackgroundColor({ color: '#1e1e2e' });  // dark background
   if (chrome.action.setBadgeTextColor) {
     chrome.action.setBadgeTextColor({ color: '#89b4fa' });      // blue text
   }
-  chrome.action.setTitle({ title: `${info.label}  ${info.timeStr}` });
+  const titleText = info.ampm ? `${info.label} ${info.timeStr} ${info.ampm}` : `${info.label} ${info.timeStr}`;
+  chrome.action.setTitle({ title: titleText });
 }
 
 // Schedule update aligned to the top of every minute

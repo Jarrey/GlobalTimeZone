@@ -2,6 +2,8 @@
 
 A Chrome extension for viewing multiple world time zones and showing the selected primary time zone directly on the toolbar icon.
 
+![demo](demo.png)
+
 ## Install
 
 1. Open Chrome and go to `chrome://extensions/`
