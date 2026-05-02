@@ -131,7 +131,11 @@ chrome.storage.onChanged.addListener((changes) => {
 
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'UPDATE_BADGE') updateIcon();
-  if (msg.type === 'REFRESH_WEATHER') refreshWeather();
+  if (msg.type === 'REFRESH_WEATHER') {
+    // Kick off the async fetch; returning true is not needed (no response sent back),
+    // but we keep a reference to the promise so Chrome doesn't GC the SW early.
+    refreshWeather().catch(() => {});
+  }
 });
 
 // Initial call on service worker startup

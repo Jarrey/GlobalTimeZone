@@ -188,6 +188,8 @@ chrome.storage.sync.get(['timezones', 'timeFormat'], (result) => {
     renderList();
     timer = setInterval(tick, 1000);
     chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
+    // Trigger weather refresh; background uses TTL cache so no excessive calls
+    chrome.runtime.sendMessage({ type: 'REFRESH_WEATHER' }).catch(() => {});
   });
 });
 
