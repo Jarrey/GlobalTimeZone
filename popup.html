@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Time Zone</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 340px;
+      min-height: 200px;
+      background: #0f0f14;
+      color: #e4e4f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 13px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid #1e1e2e;
+    }
+
+    .header-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #cdd6f4;
+      letter-spacing: 0.5px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #6c7086;
+      padding: 4px 6px;
+      border-radius: 6px;
+      transition: background 0.15s, color 0.15s;
+      display: flex;
+      align-items: center;
+    }
+
+    .icon-btn:hover { background: #1e1e2e; color: #cdd6f4; }
+
+    .icon-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+    .timezone-list {
+      padding: 8px 0;
+    }
+
+    .tz-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 16px;
+      border-radius: 0;
+      transition: background 0.12s;
+      cursor: default;
+      gap: 12px;
+      position: relative;
+    }
+
+    .tz-item {
+      cursor: pointer;
+    }
+
+    .tz-item:hover { background: #181825; }
+
+    .tz-item:hover .tz-time { color: #89b4fa; }
+
+    .ext-icon {
+      font-size: 11px;
+      color: #45475a;
+      margin-left: 3px;
+      vertical-align: super;
+      line-height: 0;
+      transition: color 0.15s;
+    }
+
+    .tz-item:hover .ext-icon { color: #89b4fa; }
+
+    .tz-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .tz-info { flex: 1; min-width: 0; }
+
+    .tz-label {
+      font-size: 11px;
+      color: #6c7086;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tz-city {
+      font-size: 13px;
+      font-weight: 500;
+      color: #cdd6f4;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tz-time-block { text-align: right; flex-shrink: 0; }
+
+    .tz-time {
+      font-size: 20px;
+      font-weight: 700;
+      color: #cdd6f4;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.5px;
+      line-height: 1;
+    }
+
+    .tz-date {
+      font-size: 10px;
+      color: #6c7086;
+      margin-top: 2px;
+    }
+
+    .tz-dst-badge {
+      font-size: 9px;
+      background: #313244;
+      color: #a6e3a1;
+      border-radius: 4px;
+      padding: 1px 5px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
+    .divider {
+      height: 1px;
+      background: #1e1e2e;
+      margin: 0 16px;
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+      color: #6c7086;
+      gap: 8px;
+    }
+
+    .empty-state svg { width: 40px; height: 40px; fill: #313244; }
+    .empty-state p { font-size: 13px; }
+    .empty-state small { font-size: 11px; color: #45475a; }
+
+    .add-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: calc(100% - 32px);
+      margin: 8px 16px 12px;
+      padding: 8px;
+      background: #1e1e2e;
+      border: 1px dashed #313244;
+      border-radius: 8px;
+      color: #6c7086;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .add-btn:hover { background: #181825; border-color: #585b70; color: #cdd6f4; }
+    .add-btn svg { width: 14px; height: 14px; fill: currentColor; }
+
+    /* Color palette for dots */
+    .color-0 { background: #89b4fa; }
+    .color-1 { background: #a6e3a1; }
+    .color-2 { background: #fab387; }
+    .color-3 { background: #f38ba8; }
+    .color-4 { background: #cba6f7; }
+    .color-5 { background: #94e2d5; }
+    .color-6 { background: #f9e2af; }
+    .color-7 { background: #89dceb; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span class="header-title">🌐 Global Time Zone</span>
+    <div class="header-actions">
+      <button class="icon-btn" id="settingsBtn" title="设置">
+        <svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 018.5 12 3.5 3.5 0 0112 8.5a3.5 3.5 0 013.5 3.5 3.5 3.5 0 01-3.5 3.5m7.43-2.92c.04-.34.07-.69.07-1.08s-.03-.74-.07-1.08l2.32-1.82c.21-.16.27-.46.13-.7l-2.2-3.81c-.13-.24-.42-.32-.66-.24l-2.74 1.1c-.57-.43-1.18-.8-1.86-1.06L14.5 2.42C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.5.42l-.41 2.91C8.47 5.63 7.86 6 7.29 6.43L4.55 5.33c-.24-.08-.53 0-.66.24L1.69 9.38c-.13.24-.08.54.13.7L4.14 11.9c-.04.34-.07.69-.07 1.08s.03.74.07 1.08L1.82 15.88c-.21.16-.27.46-.13.7l2.2 3.81c.13.24.42.32.66.24l2.74-1.1c.57.43 1.18.8 1.86 1.06l.41 2.91c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.41-2.91c.68-.26 1.29-.63 1.86-1.06l2.74 1.1c.24.08.53 0 .66-.24l2.2-3.81c.13-.24.08-.54-.13-.7l-2.32-1.82z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="timezone-list" id="timezoneList"></div>
+
+  <script src="timezones.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+const COLORS = ['color-0','color-1','color-2','color-3','color-4','color-5','color-6','color-7'];
+
+let timezones = [];
+let timer = null;
+
+function formatTime(tz) {
+  try {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', {
+      timeZone: tz,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+    const dateStr = now.toLocaleDateString('zh-CN', {
+      timeZone: tz,
+      month: 'short',
+      day: 'numeric',
+      weekday: 'short'
+    });
+    // Detect DST by checking offset difference between Jan and Jul
+    const janOffset = getOffset(tz, new Date(now.getFullYear(), 0, 1));
+    const julOffset = getOffset(tz, new Date(now.getFullYear(), 6, 1));
+    const isDST = janOffset !== julOffset && getOffset(tz, now) === Math.min(janOffset, julOffset);
+    return { timeStr, dateStr, isDST };
+  } catch (e) {
+    return { timeStr: '--:--:--', dateStr: '', isDST: false };
+  }
+}
+
+function getOffset(tz, date) {
+  const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const tzDate  = new Date(date.toLocaleString('en-US', { timeZone: tz }));
+  return utcDate - tzDate;
+}
+
+function tzUrl(zone) {
+  const path = TZ_TIMEANDDATE[zone];
+  if (path) return `https://www.timeanddate.com/worldclock/${path}`;
+  // Fallback: search page for unlisted zones
+  const city = zone.split('/').pop().replace(/_/g, ' ');
+  return `https://www.timeanddate.com/worldclock/results.html?query=${encodeURIComponent(city)}`;
+}
+
+function renderList() {
+  const container = document.getElementById('timezoneList');
+  container.innerHTML = '';
+
+  if (timezones.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H7l5-8v4h4l-5 8z"/></svg>
+        <p>还没有添加时区</p>
+        <small>点击设置按钮添加时区</small>
+      </div>`;
+    return;
+  }
+
+  timezones.forEach((tz, i) => {
+    const { timeStr, dateStr, isDST } = formatTime(tz.zone);
+    const colorClass = COLORS[i % COLORS.length];
+    const url = tzUrl(tz.zone);
+
+    const item = document.createElement('div');
+    item.className = 'tz-item';
+    item.title = '点击在 timeanddate.com 查看详情';
+    item.dataset.url = url;
+    item.innerHTML = `
+      <div class="tz-dot ${colorClass}"></div>
+      <div class="tz-info">
+        <div class="tz-city">${escapeHtml(tz.label || tz.zone)}</div>
+        <div class="tz-label">${escapeHtml(tz.zone)}${isDST ? '<span class="tz-dst-badge">DST</span>' : ''}</div>
+      </div>
+      <div class="tz-time-block">
+        <div class="tz-time">${timeStr}<span class="ext-icon">↗</span></div>
+        <div class="tz-date">${dateStr}</div>
+      </div>`;
+
+    item.addEventListener('click', () => {
+      chrome.tabs.create({ url });
+    });
+
+    if (i < timezones.length - 1) {
+      container.appendChild(item);
+      const div = document.createElement('div');
+      div.className = 'divider';
+      container.appendChild(div);
+    } else {
+      container.appendChild(item);
+    }
+  });
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function tick() {
+  // Only re-render time values, not the whole list
+  const items = document.querySelectorAll('.tz-item');
+  timezones.forEach((tz, i) => {
+    if (!items[i]) return;
+    const { timeStr, dateStr, isDST } = formatTime(tz.zone);
+    const timeEl = items[i].querySelector('.tz-time');
+    const dateEl = items[i].querySelector('.tz-date');
+    const labelEl = items[i].querySelector('.tz-label');
+    if (timeEl) timeEl.textContent = timeStr;
+    if (dateEl) dateEl.textContent = dateStr;
+    if (labelEl) labelEl.innerHTML = escapeHtml(tz.zone) + (isDST ? '<span class="tz-dst-badge">DST</span>' : '');
+  });
+}
+
+document.getElementById('settingsBtn').addEventListener('click', () => {
+  chrome.runtime.openOptionsPage();
+});
+
+chrome.storage.sync.get(['timezones'], (result) => {
+  timezones = result.timezones || [];
+  renderList();
+  timer = setInterval(tick, 1000);
+  // Wake the service worker and refresh icon when popup opens
+  chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
+});
+
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.timezones) {
+    timezones = changes.timezones.newValue || [];
+    renderList();
+  }
+});
