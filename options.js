@@ -18,14 +18,22 @@ const DEFAULT_TZ = [
   { zone: 'Asia/Tokyo',          label: '东京' },
 ];
 
-function buildSelectOptions(selectedZone) {
-  return TIMEZONE_LIST.map(t =>
-    `<option value="${t.value}"${t.value === selectedZone ? ' selected' : ''}>${escHtml(t.label)}</option>`
-  ).join('');
-}
-
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function getLabelForZone(zone) {
+  const entry = TIMEZONE_LIST.find(t => t.value === zone);
+  return entry ? entry.label : zone;
+}
+
+function fuzzyFilter(query) {
+  if (!query.trim()) return TIMEZONE_LIST;
+  const tokens = query.trim().toLowerCase().split(/\s+/);
+  return TIMEZONE_LIST.filter(item => {
+    const text = item.label.toLowerCase() + ' ' + item.value.toLowerCase();
+    return tokens.every(token => text.includes(token));
+  });
 }
 
 function renderRows() {
@@ -40,7 +48,12 @@ function renderRows() {
       </div>
       <div class="tz-row-content">
         <input class="tz-label-input" type="text" placeholder="显示名称" value="${escHtml(tz.label || '')}" data-i="${i}" />
-        <select class="tz-zone-select" data-i="${i}">${buildSelectOptions(tz.zone)}</select>
+        <div class="tz-zone-picker">
+          <input class="tz-zone-search" type="text" placeholder="搜索时区城市…"
+            value="${escHtml(getLabelForZone(tz.zone))}" autocomplete="off" data-i="${i}"
+            data-selected-label="${escHtml(getLabelForZone(tz.zone))}" />
+          <div class="tz-zone-dropdown hidden"></div>
+        </div>
       </div>
       <button class="tz-badge-primary${i === primaryIndex ? ' active' : ''}" data-i="${i}" title="设为图标栏主显示时区">
         ${i === primaryIndex ? '★ 主显示' : '设为主显示'}
@@ -57,9 +70,81 @@ function renderRows() {
       timezones[+e.target.dataset.i].label = e.target.value;
     });
   });
-  tzList.querySelectorAll('.tz-zone-select').forEach(el => {
-    el.addEventListener('change', e => {
-      timezones[+e.target.dataset.i].zone = e.target.value;
+  tzList.querySelectorAll('.tz-zone-search').forEach(input => {
+    const idx = +input.dataset.i;
+    const dropdown = input.closest('.tz-zone-picker').querySelector('.tz-zone-dropdown');
+
+    function populateDropdown(query) {
+      const results = fuzzyFilter(query);
+      if (results.length === 0) {
+        dropdown.innerHTML = '<div class="tz-zone-no-results">无匹配结果</div>';
+        return;
+      }
+      const selectedLabel = input.dataset.selectedLabel || '';
+      dropdown.innerHTML = results.map(t =>
+        `<div class="tz-zone-option${t.value === timezones[idx].zone && t.label === selectedLabel ? ' active' : ''}" data-value="${escHtml(t.value)}" data-label="${escHtml(t.label)}" data-tad="${escHtml(t.tad || '')}">${escHtml(t.label)}</div>`
+      ).join('');
+      dropdown.querySelectorAll('.tz-zone-option').forEach(opt => {
+        opt.addEventListener('mousedown', e => {
+          e.preventDefault();
+          timezones[idx].zone         = opt.dataset.value;
+          timezones[idx].tad          = opt.dataset.tad;
+          timezones[idx].selectedCity = opt.dataset.label.replace(/^\([^)]+\)\s*/, '');
+          input.value = opt.dataset.label;
+          input.dataset.selectedLabel = opt.dataset.label;
+          dropdown.classList.add('hidden');
+        });
+      });
+    }
+
+    input.addEventListener('focus', () => {
+      populateDropdown('');
+      dropdown.classList.remove('hidden');
+      input.select();
+    });
+
+    input.addEventListener('input', () => {
+      populateDropdown(input.value);
+      dropdown.classList.remove('hidden');
+    });
+
+    input.addEventListener('blur', () => {
+      setTimeout(() => {
+        dropdown.classList.add('hidden');
+        input.value = input.dataset.selectedLabel || getLabelForZone(timezones[idx].zone);
+      }, 150);
+    });
+
+    input.addEventListener('keydown', e => {
+      const opts = Array.from(dropdown.querySelectorAll('.tz-zone-option'));
+      const activeIdx = opts.findIndex(o => o.classList.contains('active'));
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = activeIdx < opts.length - 1 ? activeIdx + 1 : 0;
+        opts.forEach(o => o.classList.remove('active'));
+        opts[next]?.classList.add('active');
+        opts[next]?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = activeIdx > 0 ? activeIdx - 1 : opts.length - 1;
+        opts.forEach(o => o.classList.remove('active'));
+        opts[prev]?.classList.add('active');
+        opts[prev]?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const active = dropdown.querySelector('.tz-zone-option.active');
+        if (active) {
+          timezones[idx].zone         = active.dataset.value;
+          timezones[idx].tad          = active.dataset.tad;
+          timezones[idx].selectedCity = active.dataset.label.replace(/^\([^)]+\)\s*/, '');
+          input.value = active.dataset.label;
+          input.dataset.selectedLabel = active.dataset.label;
+          dropdown.classList.add('hidden');
+        }
+      } else if (e.key === 'Escape') {
+        dropdown.classList.add('hidden');
+        input.value = input.dataset.selectedLabel || getLabelForZone(timezones[idx].zone);
+      }
     });
   });
   tzList.querySelectorAll('.tz-badge-primary').forEach(el => {

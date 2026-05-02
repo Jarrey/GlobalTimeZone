@@ -6,12 +6,30 @@
 
 const WEATHER_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
-function cityFromZone(zone) {
+// Derive a city name for OpenWeather queries.
+// Accepts either a zone string like 'Asia/Shanghai' or a timezone entry object
+// with a `label` like '(UTC+08:00) Beijing / 北京'. Prefer the English city
+// from the label when available, falling back to the zone last segment.
+function cityFromZone(zoneOrEntry) {
+  if (typeof zoneOrEntry === 'object') {
+    // tad is like 'china/beijing' — city segment is the most accurate OWM query
+    if (zoneOrEntry.tad) {
+      return zoneOrEntry.tad.split('/').pop().replace(/-/g, ' ');
+    }
+    // Fallback: extract English city from TIMEZONE_LIST label stored in selectedCity
+    if (zoneOrEntry.selectedCity) return zoneOrEntry.selectedCity.split(' / ')[0].trim();
+    // Last resort: user custom label may contain a city name
+    if (zoneOrEntry.label) {
+      const m = zoneOrEntry.label.match(/\)\s*([^\/\(]+)/);
+      if (m && m[1]) return m[1].trim();
+    }
+  }
+  const zone = typeof zoneOrEntry === 'string' ? zoneOrEntry : zoneOrEntry.zone;
   return zone.split('/').pop().replace(/_/g, ' ');
 }
 
-async function fetchWeatherForZone(zone, apiKey) {
-  const city = cityFromZone(zone);
+async function fetchWeatherForZone(zoneOrEntry, apiKey) {
+  const city = cityFromZone(zoneOrEntry);
   const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${encodeURIComponent(apiKey)}&units=metric`;
   try {
     const resp = await fetch(url);
@@ -42,10 +60,11 @@ async function refreshWeather() {
   const updated = { ...cache };
 
   for (const tz of timezones) {
-    const cached = cache[tz.zone];
+    const key = tz.tad || tz.zone;
+    const cached = cache[key];
     if (cached && (now - cached.fetchedAt) < WEATHER_CACHE_TTL) continue;
-    const data = await fetchWeatherForZone(tz.zone, apiKey);
-    if (data) updated[tz.zone] = data;
+    const data = await fetchWeatherForZone(tz, apiKey);
+    if (data) updated[key] = data;
   }
 
   await chrome.storage.local.set({ weatherCache: updated });

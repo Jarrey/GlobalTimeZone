@@ -56,11 +56,10 @@ function getOffset(tz, date) {
   return utcDate - tzDate;
 }
 
-function tzUrl(zone) {
-  const path = TZ_TIMEANDDATE[zone];
-  if (path) return `https://www.timeanddate.com/worldclock/${path}`;
-  // Fallback: search page for unlisted zones
-  const city = zone.split('/').pop().replace(/_/g, ' ');
+function tzUrl(tz) {
+  if (tz.tad) return `https://www.timeanddate.com/worldclock/${tz.tad}`;
+  // Fallback: search page for zones without a tad value
+  const city = tz.zone.split('/').pop().replace(/_/g, ' ');
   return `https://www.timeanddate.com/worldclock/results.html?query=${encodeURIComponent(city)}`;
 }
 
@@ -81,6 +80,34 @@ function getTimeOfDay(tz) {
   }
 }
 
+// Derive city display name from stored entry.
+// Priority: selectedCity → match by tad in TIMEZONE_LIST → match by zone → zone string
+// Return the city-only part (no UTC prefix) for use as the big display name.
+function getCityDisplayName(tz) {
+  let label = null;
+  if (tz.tad) {
+    const entry = TIMEZONE_LIST.find(t => t.tad === tz.tad);
+    if (entry) label = entry.label;
+  }
+  if (!label) {
+    const entry = TIMEZONE_LIST.find(t => t.value === tz.zone);
+    if (entry) label = entry.label;
+  }
+  if (!label) return tz.zone;
+  // Strip UTC prefix: "(UTC+08:00) Beijing / 北京" → "Beijing / 北京"
+  return label.replace(/^\([^)]+\)\s*/, '');
+}
+
+// Return the full TIMEZONE_LIST label (with UTC offset) for the secondary line.
+function getFullLabel(tz) {
+  if (tz.tad) {
+    const entry = TIMEZONE_LIST.find(t => t.tad === tz.tad);
+    if (entry) return entry.label;
+  }
+  const entry = TIMEZONE_LIST.find(t => t.value === tz.zone);
+  return entry ? entry.label : tz.zone;
+}
+
 function renderList() {
   const container = document.getElementById('timezoneList');
   container.innerHTML = '';
@@ -97,7 +124,7 @@ function renderList() {
 
   timezones.forEach((tz, i) => {
     const { timeStr, dateStr, isDST } = formatTime(tz.zone);
-    const url = tzUrl(tz.zone);
+    const url = tzUrl(tz);
     const dayState = getTimeOfDay(tz.zone);
 
     const stateIcon = {
@@ -105,7 +132,7 @@ function renderList() {
       night: '🌙'
     }[dayState] || '☀️';
 
-    const w = weatherCache[tz.zone];
+    const w = weatherCache[tz.tad || tz.zone];
     const owmUrl = w ? `https://openweathermap.org/city/${w.cityId}` : '';
     const weatherHtml = w
       ? `<span class="tz-weather" title="${escapeHtml(w.desc)}" data-owm-url="${escapeHtml(owmUrl)}">
@@ -122,8 +149,8 @@ function renderList() {
     item.innerHTML = `
       <div class="tz-state-icon">${stateIcon}</div>
       <div class="tz-info">
-        <div class="tz-city">${escapeHtml(tz.label || tz.zone)}</div>
-        <div class="tz-label">${escapeHtml(tz.zone)}${isDST ? '<span class="tz-dst-badge">DST</span>' : ''}</div>
+        <div class="tz-city">${escapeHtml(tz.label || getCityDisplayName(tz))}</div>
+        <div class="tz-label">${escapeHtml(getFullLabel(tz))}${isDST ? ' <span class="tz-dst-badge">DST</span>' : ''}</div>
       </div>
       ${weatherHtml}
       <div class="tz-time-block">
@@ -170,7 +197,7 @@ function tick() {
     const labelEl = items[i].querySelector('.tz-label');
     if (timeEl) timeEl.textContent = timeStr;
     if (dateEl) dateEl.textContent = dateStr;
-    if (labelEl) labelEl.innerHTML = escapeHtml(tz.zone) + (isDST ? '<span class="tz-dst-badge">DST</span>' : '');
+    if (labelEl) labelEl.innerHTML = escapeHtml(getFullLabel(tz)) + (isDST ? ' <span class="tz-dst-badge">DST</span>' : '');
   });
 }
 

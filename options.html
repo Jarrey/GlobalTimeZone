@@ -279,6 +279,62 @@
       margin-top: 8px;
       line-height: 1.6;
     }
+
+    /* Timezone searchable combobox */
+    .tz-zone-picker {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .tz-zone-search {
+      width: 100%;
+      background: #0f0f14;
+      border: 1px solid #313244;
+      border-radius: 6px;
+      color: #cdd6f4;
+      padding: 6px 10px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+      box-sizing: border-box;
+    }
+
+    .tz-zone-search:focus { border-color: #89b4fa; }
+
+    .tz-zone-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: #1e1e2e;
+      border: 1px solid #313244;
+      border-radius: 8px;
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 1000;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+
+    .tz-zone-dropdown.hidden { display: none; }
+
+    .tz-zone-option {
+      padding: 7px 12px;
+      font-size: 12px;
+      color: #cdd6f4;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+
+    .tz-zone-option:hover { background: #2a2a3e; }
+    .tz-zone-option.active { background: #313244; color: #89b4fa; }
+
+    .tz-zone-no-results {
+      padding: 10px 12px;
+      font-size: 12px;
+      color: #6c7086;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
