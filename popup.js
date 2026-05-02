@@ -1,4 +1,3 @@
-const COLORS = ['color-0','color-1','color-2','color-3','color-4','color-5','color-6','color-7'];
 
 // Map OWM icon code prefix to emoji
 const WEATHER_EMOJI = {
@@ -19,6 +18,7 @@ function weatherEmoji(iconCode) {
 }
 
 let timezones = [];
+let primaryIndex = 0;
 let timer = null;
 let timeFormat = '24h';
 let weatherCache = {};
@@ -97,7 +97,6 @@ function renderList() {
 
   timezones.forEach((tz, i) => {
     const { timeStr, dateStr, isDST } = formatTime(tz.zone);
-    const colorClass = COLORS[i % COLORS.length];
     const url = tzUrl(tz.zone);
     const dayState = getTimeOfDay(tz.zone);
 
@@ -115,12 +114,12 @@ function renderList() {
          </span>`
       : '';
 
+    const isPrimary = i === primaryIndex;
     const item = document.createElement('div');
-    item.className = `tz-item ${dayState}`;
+    item.className = `tz-item ${dayState}${isPrimary ? ' primary' : ''}`;
     item.title = 'Open timeanddate.com for this timezone';
     item.dataset.url = url;
     item.innerHTML = `
-      <div class="tz-dot ${colorClass}"></div>
       <div class="tz-state-icon">${stateIcon}</div>
       <div class="tz-info">
         <div class="tz-city">${escapeHtml(tz.label || tz.zone)}</div>
@@ -179,9 +178,10 @@ document.getElementById('settingsBtn').addEventListener('click', () => {
   chrome.runtime.openOptionsPage();
 });
 
-chrome.storage.sync.get(['timezones', 'timeFormat'], (result) => {
+chrome.storage.sync.get(['timezones', 'timeFormat', 'primaryIndex'], (result) => {
   timezones = result.timezones || [];
   timeFormat = result.timeFormat || '24h';
+  primaryIndex = result.primaryIndex ?? 0;
   // Load cached weather data before first render
   chrome.storage.local.get('weatherCache', (local) => {
     weatherCache = local.weatherCache || {};
@@ -202,6 +202,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
     }
     if (changes.timeFormat) {
       timeFormat = changes.timeFormat.newValue || '24h';
+      shouldRender = true;
+    }
+    if (changes.primaryIndex) {
+      primaryIndex = changes.primaryIndex.newValue ?? 0;
       shouldRender = true;
     }
   }

@@ -113,12 +113,13 @@
 
     .tz-item:hover .ext-icon { color: #89b4fa; }
 
-    .tz-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
+    .tz-item.primary.day,
+    .tz-item.primary.night {
+      border-left: 5px solid #cdd6f4;
     }
+
+    .tz-item.primary.day:hover,
+    .tz-item.primary.night:hover { border-left-color: #89b4fa; }
 
     .tz-state-icon {
       width: 20px;
@@ -242,15 +243,7 @@
     .add-btn:hover { background: #181825; border-color: #585b70; color: #cdd6f4; }
     .add-btn svg { width: 14px; height: 14px; fill: currentColor; }
 
-    /* Color palette for dots */
-    .color-0 { background: #89b4fa; }
-    .color-1 { background: #a6e3a1; }
-    .color-2 { background: #fab387; }
-    .color-3 { background: #f38ba8; }
-    .color-4 { background: #cba6f7; }
-    .color-5 { background: #94e2d5; }
-    .color-6 { background: #f9e2af; }
-    .color-7 { background: #89dceb; }
+
   </style>
 </head>
 <body>
