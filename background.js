@@ -52,17 +52,34 @@ async function refreshWeather(force = false) {
   const result = await chrome.storage.sync.get(['timezones', 'weatherApiKey']);
   const apiKey = result.weatherApiKey || '';
   const timezones = result.timezones || [];
-  if (!apiKey || timezones.length === 0) return;
-
   const existing = await chrome.storage.local.get('weatherCache');
   const cache = existing.weatherCache || {};
   const now = Date.now();
-  const updated = { ...cache };
+  const updated = {};
+
+  // Rebuild cache from current configured timezone keys only.
+  // This drops stale city entries that are no longer configured.
+  if (timezones.length === 0) {
+    await chrome.storage.local.set({ weatherCache: updated });
+    return;
+  }
+
+  if (!apiKey) {
+    for (const tz of timezones) {
+      const key = tz.tad || tz.zone;
+      if (cache[key]) updated[key] = cache[key];
+    }
+    await chrome.storage.local.set({ weatherCache: updated });
+    return;
+  }
 
   for (const tz of timezones) {
     const key = tz.tad || tz.zone;
     const cached = cache[key];
-    if (!force && cached && (now - cached.fetchedAt) < WEATHER_CACHE_TTL) continue;
+    if (!force && cached && (now - cached.fetchedAt) < WEATHER_CACHE_TTL) {
+      updated[key] = cached;
+      continue;
+    }
     const data = await fetchWeatherForZone(tz, apiKey);
     if (data) updated[key] = data;
   }
@@ -145,7 +162,7 @@ chrome.runtime.onStartup.addListener(() => { updateIcon(); scheduleNextMinute();
 chrome.storage.onChanged.addListener((changes) => {
   updateIcon();
   // If timezones or API key changed, refresh weather
-  if (changes.timezones || changes.weatherApiKey) refreshWeather();
+  if (changes.timezones || changes.weatherApiKey) refreshWeather(true);
 });
 
 chrome.runtime.onMessage.addListener((msg) => {
@@ -153,7 +170,7 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'REFRESH_WEATHER') {
     // Kick off the async fetch; returning true is not needed (no response sent back),
     // but we keep a reference to the promise so Chrome doesn't GC the SW early.
-    refreshWeather().catch(() => {});
+    refreshWeather(Boolean(msg.force)).catch(() => {});
   }
 });
 

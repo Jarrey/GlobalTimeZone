@@ -244,7 +244,7 @@ saveBtn.addEventListener('click', () => {
     setTimeout(() => saveMsg.classList.remove('show'), 2000);
     // Notify background to update badge and weather
     chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
-    chrome.runtime.sendMessage({ type: 'REFRESH_WEATHER' }).catch(() => {});
+    chrome.runtime.sendMessage({ type: 'REFRESH_WEATHER', force: true }).catch(() => {});
   });
 });
 
