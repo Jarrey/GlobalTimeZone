@@ -128,11 +128,6 @@ function renderList() {
     const url = tzUrl(tz);
     const dayState = getTimeOfDay(tz.zone);
 
-    const stateIcon = {
-      day: '☀️',
-      night: '🌙'
-    }[dayState] || '☀️';
-
     const w = weatherCache[tz.tad || tz.zone];
     const owmUrl = w ? `https://openweathermap.org/city/${w.cityId}` : '';
     const weatherHtml = w
@@ -148,7 +143,6 @@ function renderList() {
     item.title = 'Open timeanddate.com for this timezone';
     item.dataset.url = url;
     item.innerHTML = `
-      <div class="tz-state-icon">${stateIcon}</div>
       <div class="tz-info">
         <div class="tz-city">${escapeHtml(tz.label || getCityDisplayName(tz))}</div>
         <div class="tz-label">${escapeHtml(getFullLabel(tz))}${isDST ? ' <span class="tz-dst-badge">DST</span>' : ''}</div>
