@@ -22,6 +22,7 @@ let primaryIndex = 0;
 let timer = null;
 let timeFormat = '24h';
 let weatherCache = {};
+const WEATHER_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 function formatTime(tz) {
   try {
@@ -201,6 +202,20 @@ function tick() {
   });
 }
 
+function isWeatherCacheEntryValid(entry, now = Date.now()) {
+  if (!entry || typeof entry.fetchedAt !== 'number') return false;
+  return (now - entry.fetchedAt) < WEATHER_CACHE_TTL;
+}
+
+function shouldRequestWeatherRefresh() {
+  if (timezones.length === 0) return false;
+  const now = Date.now();
+  return timezones.some((tz) => {
+    const key = tz.tad || tz.zone;
+    return !isWeatherCacheEntryValid(weatherCache[key], now);
+  });
+}
+
 document.getElementById('settingsBtn').addEventListener('click', () => {
   chrome.runtime.openOptionsPage();
 });
@@ -215,8 +230,10 @@ chrome.storage.sync.get(['timezones', 'timeFormat', 'primaryIndex'], (result) =>
     renderList();
     timer = setInterval(tick, 1000);
     chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
-    // Trigger weather refresh; background uses TTL cache so no excessive calls
-    chrome.runtime.sendMessage({ type: 'REFRESH_WEATHER' }).catch(() => {});
+    // Refresh weather only if cache is missing/expired for any displayed timezone.
+    if (shouldRequestWeatherRefresh()) {
+      chrome.runtime.sendMessage({ type: 'REFRESH_WEATHER' }).catch(() => {});
+    }
   });
 });
 

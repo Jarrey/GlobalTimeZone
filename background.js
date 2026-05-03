@@ -48,7 +48,7 @@ async function fetchWeatherForZone(zoneOrEntry, apiKey) {
   }
 }
 
-async function refreshWeather() {
+async function refreshWeather(force = false) {
   const result = await chrome.storage.sync.get(['timezones', 'weatherApiKey']);
   const apiKey = result.weatherApiKey || '';
   const timezones = result.timezones || [];
@@ -62,7 +62,7 @@ async function refreshWeather() {
   for (const tz of timezones) {
     const key = tz.tad || tz.zone;
     const cached = cache[key];
-    if (cached && (now - cached.fetchedAt) < WEATHER_CACHE_TTL) continue;
+    if (!force && cached && (now - cached.fetchedAt) < WEATHER_CACHE_TTL) continue;
     const data = await fetchWeatherForZone(tz, apiKey);
     if (data) updated[key] = data;
   }
@@ -136,7 +136,7 @@ function scheduleWeather() {
 
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === 'tick') updateIcon();
-  if (alarm.name === 'weatherRefresh') refreshWeather();
+  if (alarm.name === 'weatherRefresh') refreshWeather(true);
 });
 
 chrome.runtime.onInstalled.addListener(() => { updateIcon(); scheduleNextMinute(); scheduleWeather(); refreshWeather(); });

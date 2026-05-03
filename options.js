@@ -27,6 +27,27 @@ function getLabelForZone(zone) {
   return entry ? entry.label : zone;
 }
 
+function stripUtcPrefix(label) {
+  return String(label).replace(/^\([^)]+\)\s*/, '').trim();
+}
+
+function getLabelForTimezoneEntry(tz) {
+  if (tz && tz.tad) {
+    const byTad = TIMEZONE_LIST.find(t => t.tad === tz.tad);
+    if (byTad) return byTad.label;
+  }
+
+  if (tz && tz.selectedCity) {
+    const selectedCity = tz.selectedCity.trim().toLowerCase();
+    const byCity = TIMEZONE_LIST.find(t =>
+      t.value === tz.zone && stripUtcPrefix(t.label).toLowerCase() === selectedCity
+    );
+    if (byCity) return byCity.label;
+  }
+
+  return getLabelForZone(tz?.zone);
+}
+
 function fuzzyFilter(query) {
   if (!query.trim()) return TIMEZONE_LIST;
   const tokens = query.trim().toLowerCase().split(/\s+/);
@@ -39,6 +60,7 @@ function fuzzyFilter(query) {
 function renderRows() {
   tzList.innerHTML = '';
   timezones.forEach((tz, i) => {
+    const selectedLabel = getLabelForTimezoneEntry(tz);
     const row = document.createElement('div');
     row.className = 'tz-row';
     row.dataset.index = i;
@@ -50,8 +72,8 @@ function renderRows() {
         <input class="tz-label-input" type="text" placeholder="显示名称" value="${escHtml(tz.label || '')}" data-i="${i}" />
         <div class="tz-zone-picker">
           <input class="tz-zone-search" type="text" placeholder="搜索时区城市…"
-            value="${escHtml(getLabelForZone(tz.zone))}" autocomplete="off" data-i="${i}"
-            data-selected-label="${escHtml(getLabelForZone(tz.zone))}" />
+            value="${escHtml(selectedLabel)}" autocomplete="off" data-i="${i}"
+            data-selected-label="${escHtml(selectedLabel)}" />
           <div class="tz-zone-dropdown hidden"></div>
         </div>
       </div>
