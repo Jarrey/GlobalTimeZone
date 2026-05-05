@@ -210,10 +210,6 @@ function shouldRequestWeatherRefresh() {
   });
 }
 
-document.getElementById('settingsBtn').addEventListener('click', () => {
-  chrome.runtime.openOptionsPage();
-});
-
 chrome.storage.sync.get(['timezones', 'timeFormat', 'primaryIndex'], (result) => {
   timezones = result.timezones || [];
   timeFormat = result.timeFormat || '24h';
