@@ -24,27 +24,39 @@ let timeFormat = '24h';
 let weatherCache = {};
 const WEATHER_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
-function formatTime(tz) {
+const dstCache = new Map();
+
+let cachedItems = null;
+
+function getDSTInfo(tz, now) {
+  const dateKey = now.toLocaleDateString('en-US', { timeZone: tz });
+  const cached = dstCache.get(tz);
+  if (cached && cached.date === dateKey) return cached.isDST;
+  const janOffset = getOffset(tz, new Date(now.getFullYear(), 0, 1));
+  const julOffset = getOffset(tz, new Date(now.getFullYear(), 6, 1));
+  const isDST = janOffset !== julOffset && getOffset(tz, now) === Math.min(janOffset, julOffset);
+  dstCache.set(tz, { isDST, date: dateKey });
+  return isDST;
+}
+
+function formatTime(tz, now) {
+  const n = now || new Date();
   try {
-    const now = new Date();
     const use12 = timeFormat === '12h';
-    const timeStr = now.toLocaleTimeString('en-US', {
+    const timeStr = n.toLocaleTimeString('en-US', {
       timeZone: tz,
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
       hour12: use12
     });
-    const dateStr = now.toLocaleDateString('zh-CN', {
+    const dateStr = n.toLocaleDateString('zh-CN', {
       timeZone: tz,
       month: 'short',
       day: 'numeric',
       weekday: 'short'
     });
-    // Detect DST by checking offset difference between Jan and Jul
-    const janOffset = getOffset(tz, new Date(now.getFullYear(), 0, 1));
-    const julOffset = getOffset(tz, new Date(now.getFullYear(), 6, 1));
-    const isDST = janOffset !== julOffset && getOffset(tz, now) === Math.min(janOffset, julOffset);
+    const isDST = getDSTInfo(tz, n);
     return { timeStr, dateStr, isDST };
   } catch (e) {
     return { timeStr: '--:--:--', dateStr: '', isDST: false };
@@ -85,27 +97,19 @@ function getTimeOfDay(tz) {
 // Priority: selectedCity → match by tad in TIMEZONE_LIST → match by zone → zone string
 // Return the city-only part (no UTC prefix) for use as the big display name.
 function getCityDisplayName(tz) {
-  let label = null;
-  if (tz.tad) {
-    const entry = TIMEZONE_LIST.find(t => t.tad === tz.tad);
-    if (entry) label = entry.label;
-  }
-  if (!label) {
-    const entry = TIMEZONE_LIST.find(t => t.value === tz.zone);
-    if (entry) label = entry.label;
-  }
-  if (!label) return tz.zone;
-  // Strip UTC prefix: "(UTC+08:00) Beijing / 北京" → "Beijing / 北京"
-  return label.replace(/^\([^)]+\)\s*/, '');
+  let entry = null;
+  if (tz.tad) entry = TZ_BY_TAD.get(tz.tad);
+  if (!entry) entry = TZ_BY_VALUE.get(tz.zone);
+  if (!entry) return tz.zone;
+  return entry.label.replace(/^\([^)]+\)\s*/, '');
 }
 
-// Return the full TIMEZONE_LIST label (with UTC offset) for the secondary line.
 function getFullLabel(tz) {
   if (tz.tad) {
-    const entry = TIMEZONE_LIST.find(t => t.tad === tz.tad);
+    const entry = TZ_BY_TAD.get(tz.tad);
     if (entry) return entry.label;
   }
-  const entry = TIMEZONE_LIST.find(t => t.value === tz.zone);
+  const entry = TZ_BY_VALUE.get(tz.zone);
   return entry ? entry.label : tz.zone;
 }
 
@@ -162,15 +166,14 @@ function renderList() {
       chrome.tabs.create({ url });
     });
 
+    container.appendChild(item);
     if (i < timezones.length - 1) {
-      container.appendChild(item);
       const div = document.createElement('div');
       div.className = 'divider';
       container.appendChild(div);
-    } else {
-      container.appendChild(item);
     }
   });
+  cachedItems = null;
 }
 
 function escapeHtml(str) {
@@ -178,18 +181,19 @@ function escapeHtml(str) {
 }
 
 function tick() {
-  // Only re-render time values and time-of-day state, not the whole list
-  const items = document.querySelectorAll('.tz-item');
+  if (!cachedItems) cachedItems = document.querySelectorAll('.tz-item');
+  const now = new Date();
   timezones.forEach((tz, i) => {
-    if (!items[i]) return;
-    const { timeStr, dateStr, isDST } = formatTime(tz.zone);
+    if (!cachedItems[i]) return;
+    const { timeStr, dateStr, isDST } = formatTime(tz.zone, now);
     const dayState = getTimeOfDay(tz.zone);
-    items[i].classList.remove('day', 'dawn', 'dusk', 'night');
-    items[i].classList.add(dayState);
+    const item = cachedItems[i];
+    item.classList.remove('day', 'dawn', 'dusk', 'night');
+    item.classList.add(dayState);
 
-    const timeEl = items[i].querySelector('.tz-time');
-    const dateEl = items[i].querySelector('.tz-date');
-    const labelEl = items[i].querySelector('.tz-label');
+    const timeEl = item.querySelector('.tz-time');
+    const dateEl = item.querySelector('.tz-date');
+    const labelEl = item.querySelector('.tz-label');
     if (timeEl) timeEl.textContent = timeStr;
     if (dateEl) dateEl.textContent = dateStr;
     if (labelEl) labelEl.innerHTML = escapeHtml(getFullLabel(tz)) + (isDST ? ' <span class="tz-dst-badge">DST</span>' : '');
@@ -210,42 +214,62 @@ function shouldRequestWeatherRefresh() {
   });
 }
 
+function updateWeather() {
+  if (timezones.length === 0) return;
+  const items = document.querySelectorAll('.tz-item');
+  timezones.forEach((tz, i) => {
+    if (!items[i]) return;
+    const item = items[i];
+    const w = weatherCache[tz.tad || tz.zone];
+    const weatherEl = item.querySelector('.tz-weather');
+    if (w) {
+      const owmUrl = `https://openweathermap.org/city/${w.cityId}`;
+      const html = `<span>${weatherEmoji(w.icon)}</span><span class="tz-weather-temp">${w.temp}°</span>`;
+      if (weatherEl) {
+        weatherEl.title = w.desc;
+        weatherEl.dataset.owmUrl = owmUrl;
+        weatherEl.innerHTML = html;
+      } else {
+        const span = document.createElement('span');
+        span.className = 'tz-weather';
+        span.title = w.desc;
+        span.dataset.owmUrl = owmUrl;
+        span.innerHTML = html;
+        const timeBlock = item.querySelector('.tz-time-block');
+        if (timeBlock) timeBlock.before(span);
+      }
+    } else if (weatherEl) {
+      weatherEl.remove();
+    }
+  });
+}
+
 chrome.storage.sync.get(['timezones', 'timeFormat', 'primaryIndex'], (result) => {
   timezones = result.timezones || [];
   timeFormat = result.timeFormat || '24h';
   primaryIndex = result.primaryIndex ?? 0;
-  // Load cached weather data before first render
   chrome.storage.local.get('weatherCache', (local) => {
     weatherCache = local.weatherCache || {};
     renderList();
     timer = setInterval(tick, 1000);
-    chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
-    // Refresh weather only if cache is missing/expired for any displayed timezone.
+    chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(err => console.warn('UPDATE_BADGE:', err));
     if (shouldRequestWeatherRefresh()) {
-      chrome.runtime.sendMessage({ type: 'REFRESH_WEATHER' }).catch(() => {});
+      chrome.runtime.sendMessage({ type: 'REFRESH_WEATHER' }).catch(err => console.warn('REFRESH_WEATHER:', err));
     }
   });
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  let shouldRender = false;
   if (area === 'sync') {
-    if (changes.timezones) {
-      timezones = changes.timezones.newValue || [];
-      shouldRender = true;
-    }
-    if (changes.timeFormat) {
-      timeFormat = changes.timeFormat.newValue || '24h';
-      shouldRender = true;
-    }
-    if (changes.primaryIndex) {
-      primaryIndex = changes.primaryIndex.newValue ?? 0;
-      shouldRender = true;
+    if (changes.timezones || changes.timeFormat || changes.primaryIndex) {
+      if (changes.timezones) timezones = changes.timezones.newValue || [];
+      if (changes.timeFormat) timeFormat = changes.timeFormat.newValue || '24h';
+      if (changes.primaryIndex) primaryIndex = changes.primaryIndex.newValue ?? 0;
+      renderList();
     }
   }
   if (area === 'local' && changes.weatherCache) {
     weatherCache = changes.weatherCache.newValue || {};
-    shouldRender = true;
+    if (timezones.length > 0) updateWeather();
   }
-  if (shouldRender) renderList();
 });

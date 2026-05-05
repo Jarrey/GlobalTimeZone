@@ -419,3 +419,10 @@ const TIMEZONE_LIST = [
   { value: 'Pacific/Fiji',        label: '(UTC+12:00) Suva / 斐济-苏瓦',                          tad: 'fiji/suva' },
   { value: 'Pacific/Tongatapu',   label: '(UTC+13:00) Nukuʻalofa / 努库阿洛法',                   tad: 'tonga/nukualofa' },
 ];
+
+const TZ_BY_TAD = new Map();
+const TZ_BY_VALUE = new Map();
+for (const tz of TIMEZONE_LIST) {
+  if (tz.tad && !TZ_BY_TAD.has(tz.tad)) TZ_BY_TAD.set(tz.tad, tz);
+  if (tz.value && !TZ_BY_VALUE.has(tz.value)) TZ_BY_VALUE.set(tz.value, tz);
+}

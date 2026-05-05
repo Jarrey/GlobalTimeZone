@@ -49,23 +49,24 @@ async function fetchWeatherForZone(zoneOrEntry, apiKey) {
 }
 
 async function refreshWeather(force = false) {
-  const result = await chrome.storage.sync.get(['timezones', 'weatherApiKey']);
-  const apiKey = result.weatherApiKey || '';
-  const timezones = result.timezones || [];
-  const existing = await chrome.storage.local.get('weatherCache');
-  const cache = existing.weatherCache || {};
+  const [{ timezones }, { weatherApiKey, weatherCache: existingCache }] =
+    await Promise.all([
+      chrome.storage.sync.get('timezones'),
+      chrome.storage.local.get(['weatherApiKey', 'weatherCache'])
+    ]);
+  const apiKey = weatherApiKey || '';
+  const allTimezones = timezones || [];
+  const cache = existingCache || {};
   const now = Date.now();
   const updated = {};
 
-  // Rebuild cache from current configured timezone keys only.
-  // This drops stale city entries that are no longer configured.
-  if (timezones.length === 0) {
+  if (allTimezones.length === 0) {
     await chrome.storage.local.set({ weatherCache: updated });
     return;
   }
 
   if (!apiKey) {
-    for (const tz of timezones) {
+    for (const tz of allTimezones) {
       const key = tz.tad || tz.zone;
       if (cache[key]) updated[key] = cache[key];
     }
@@ -73,7 +74,7 @@ async function refreshWeather(force = false) {
     return;
   }
 
-  for (const tz of timezones) {
+  for (const tz of allTimezones) {
     const key = tz.tad || tz.zone;
     const cached = cache[key];
     if (!force && cached && (now - cached.fetchedAt) < WEATHER_CACHE_TTL) {
@@ -81,7 +82,11 @@ async function refreshWeather(force = false) {
       continue;
     }
     const data = await fetchWeatherForZone(tz, apiKey);
-    if (data) updated[key] = data;
+    if (data) {
+      updated[key] = data;
+    } else if (cached) {
+      updated[key] = cached;
+    }
   }
 
   await chrome.storage.local.set({ weatherCache: updated });
@@ -159,18 +164,19 @@ chrome.alarms.onAlarm.addListener(alarm => {
 chrome.runtime.onInstalled.addListener(() => { updateIcon(); scheduleNextMinute(); scheduleWeather(); refreshWeather(); });
 chrome.runtime.onStartup.addListener(() => { updateIcon(); scheduleNextMinute(); scheduleWeather(); refreshWeather(); });
 
-chrome.storage.onChanged.addListener((changes) => {
-  updateIcon();
-  // If timezones or API key changed, refresh weather
-  if (changes.timezones || changes.weatherApiKey) refreshWeather(true);
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (changes.timezones || changes.timeFormat || changes.primaryIndex) {
+    updateIcon();
+  }
+  if (changes.timezones || changes.weatherApiKey) {
+    refreshWeather(true);
+  }
 });
 
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'UPDATE_BADGE') updateIcon();
   if (msg.type === 'REFRESH_WEATHER') {
-    // Kick off the async fetch; returning true is not needed (no response sent back),
-    // but we keep a reference to the promise so Chrome doesn't GC the SW early.
-    refreshWeather(Boolean(msg.force)).catch(() => {});
+    refreshWeather(Boolean(msg.force)).catch(err => console.warn('REFRESH_WEATHER:', err));
   }
 });
 

@@ -23,8 +23,7 @@ function escHtml(s) {
 }
 
 function getLabelForZone(zone) {
-  const entry = TIMEZONE_LIST.find(t => t.value === zone);
-  return entry ? entry.label : zone;
+  return TZ_BY_VALUE.get(zone)?.label || zone;
 }
 
 function stripUtcPrefix(label) {
@@ -32,19 +31,17 @@ function stripUtcPrefix(label) {
 }
 
 function getLabelForTimezoneEntry(tz) {
-  if (tz && tz.tad) {
-    const byTad = TIMEZONE_LIST.find(t => t.tad === tz.tad);
-    if (byTad) return byTad.label;
+  if (tz?.tad) {
+    const entry = TZ_BY_TAD.get(tz.tad);
+    if (entry) return entry.label;
   }
-
-  if (tz && tz.selectedCity) {
+  if (tz?.selectedCity) {
     const selectedCity = tz.selectedCity.trim().toLowerCase();
-    const byCity = TIMEZONE_LIST.find(t =>
+    const entry = TIMEZONE_LIST.find(t =>
       t.value === tz.zone && stripUtcPrefix(t.label).toLowerCase() === selectedCity
     );
-    if (byCity) return byCity.label;
+    if (entry) return entry.label;
   }
-
   return getLabelForZone(tz?.zone);
 }
 
@@ -239,26 +236,40 @@ timeFormatInputs.forEach(input => {
 
 saveBtn.addEventListener('click', () => {
   weatherApiKey = weatherApiKeyInput.value.trim();
-  chrome.storage.sync.set({ timezones, primaryIndex, timeFormat, weatherApiKey }, () => {
-    saveMsg.classList.add('show');
-    setTimeout(() => saveMsg.classList.remove('show'), 2000);
-    // Notify background to update badge and weather
-    chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
-    chrome.runtime.sendMessage({ type: 'REFRESH_WEATHER', force: true }).catch(() => {});
+  chrome.storage.sync.set({ timezones, primaryIndex, timeFormat }, () => {
+    chrome.storage.local.set({ weatherApiKey }, () => {
+      saveMsg.classList.add('show');
+      setTimeout(() => saveMsg.classList.remove('show'), 2000);
+      chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(err => console.warn('UPDATE_BADGE:', err));
+      chrome.runtime.sendMessage({ type: 'REFRESH_WEATHER', force: true }).catch(err => console.warn('REFRESH_WEATHER:', err));
+    });
   });
 });
 
 // Load saved data
-chrome.storage.sync.get(['timezones', 'primaryIndex', 'timeFormat', 'weatherApiKey'], result => {
+chrome.storage.sync.get(['timezones', 'primaryIndex', 'timeFormat'], result => {
   timezones = result.timezones || DEFAULT_TZ;
   primaryIndex = result.primaryIndex || 0;
   timeFormat = result.timeFormat || '24h';
-  weatherApiKey = result.weatherApiKey || '';
   const activeInput = document.querySelector(`input[name="timeFormat"][value="${timeFormat}"]`);
   if (activeInput) activeInput.checked = true;
-  if (weatherApiKeyInput) weatherApiKeyInput.value = weatherApiKey;
-  if (weatherApiKey && weatherStatusEl) {
-    weatherStatusEl.textContent = 'API key set — weather data will refresh automatically.';
-  }
-  renderRows();
+  chrome.storage.local.get('weatherApiKey', local => {
+    weatherApiKey = local.weatherApiKey || '';
+    if (!weatherApiKey) {
+      chrome.storage.sync.get('weatherApiKey', sync => {
+        if (sync.weatherApiKey) {
+          weatherApiKey = sync.weatherApiKey;
+          chrome.storage.local.set({ weatherApiKey });
+          chrome.storage.sync.remove('weatherApiKey');
+        }
+        if (weatherApiKeyInput) weatherApiKeyInput.value = weatherApiKey;
+        if (weatherApiKey && weatherStatusEl) weatherStatusEl.textContent = 'API key set — weather data will refresh automatically.';
+        renderRows();
+      });
+    } else {
+      if (weatherApiKeyInput) weatherApiKeyInput.value = weatherApiKey;
+      if (weatherApiKey && weatherStatusEl) weatherStatusEl.textContent = 'API key set — weather data will refresh automatically.';
+      renderRows();
+    }
+  });
 });
