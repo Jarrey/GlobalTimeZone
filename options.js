@@ -18,9 +18,8 @@ const DEFAULT_TZ = [
   { zone: 'Asia/Tokyo',          label: '东京' },
 ];
 
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+// escHtml alias for escapeHtml from timezones.js
+const escHtml = escapeHtml;
 
 function getLabelForZone(zone) {
   return TZ_BY_VALUE.get(zone)?.label || zone;

@@ -7,88 +7,14 @@
 <canvas id="c48" width="48" height="48"></canvas>
 <canvas id="c128" width="128" height="128"></canvas>
 <div id="links"></div>
+<script src="icon_drawing.js"></script>
 <script>
-function drawIcon(canvas, size) {
-  const ctx = canvas.getContext('2d');
-  const s = size;
-  const r = s / 2;
-  const lw = Math.max(1, s / 16);
-
-  // Background circle - dark
-  ctx.beginPath();
-  ctx.arc(r, r, r, 0, Math.PI * 2);
-  ctx.fillStyle = '#1e1e2e';
-  ctx.fill();
-
-  // Outer ring
-  ctx.beginPath();
-  ctx.arc(r, r, r - lw * 0.6, 0, Math.PI * 2);
-  ctx.strokeStyle = '#89b4fa';
-  ctx.lineWidth = lw;
-  ctx.stroke();
-
-  // Globe horizontal line
-  ctx.beginPath();
-  ctx.moveTo(lw, r);
-  ctx.lineTo(s - lw, r);
-  ctx.strokeStyle = '#89b4fa55';
-  ctx.lineWidth = lw * 0.8;
-  ctx.stroke();
-
-  // Globe vertical line
-  ctx.beginPath();
-  ctx.moveTo(r, lw);
-  ctx.lineTo(r, s - lw);
-  ctx.stroke();
-
-  // Left ellipse (longitude)
-  ctx.beginPath();
-  ctx.ellipse(r, r, r * 0.45, r - lw, 0, 0, Math.PI * 2);
-  ctx.strokeStyle = '#89b4fa';
-  ctx.lineWidth = lw * 0.8;
-  ctx.stroke();
-
-  // Clock hands
-  const now = new Date();
-  const hours = now.getHours() % 12;
-  const minutes = now.getMinutes();
-
-  const handColor = '#a6e3a1';
-  const center = r;
-
-  // Hour hand
-  const hourAngle = ((hours + minutes / 60) / 12) * Math.PI * 2 - Math.PI / 2;
-  ctx.beginPath();
-  ctx.moveTo(center, center);
-  ctx.lineTo(center + Math.cos(hourAngle) * r * 0.38, center + Math.sin(hourAngle) * r * 0.38);
-  ctx.strokeStyle = handColor;
-  ctx.lineWidth = lw * 1.4;
-  ctx.lineCap = 'round';
-  ctx.stroke();
-
-  // Minute hand
-  const minAngle = (minutes / 60) * Math.PI * 2 - Math.PI / 2;
-  ctx.beginPath();
-  ctx.moveTo(center, center);
-  ctx.lineTo(center + Math.cos(minAngle) * r * 0.55, center + Math.sin(minAngle) * r * 0.55);
-  ctx.strokeStyle = handColor;
-  ctx.lineWidth = lw * 0.9;
-  ctx.lineCap = 'round';
-  ctx.stroke();
-
-  // Center dot
-  ctx.beginPath();
-  ctx.arc(center, center, lw * 1.2, 0, Math.PI * 2);
-  ctx.fillStyle = handColor;
-  ctx.fill();
-}
-
-const sizes = [16, 32, 48, 128];
 const links = document.getElementById('links');
 
-sizes.forEach(size => {
+ICON_SIZES.forEach(size => {
   const canvas = document.getElementById('c' + size);
-  drawIcon(canvas, size);
+  const ctx = canvas.getContext('2d');
+  drawIcon(ctx, size); // Uses default 10:10 from shared module
   const a = document.createElement('a');
   a.download = 'icon' + size + '.png';
   a.href = canvas.toDataURL('image/png');

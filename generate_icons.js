@@ -3,10 +3,32 @@
 
 const fs = require('fs');
 const path = require('path');
-const { createCanvas } = (() => {
-  // Try canvas package
-  try { return require('canvas'); } catch(e) { return null; }
-})() || {};
+
+// Try to use shared module, otherwise inline duplicate
+let drawIcon, ICON_SIZES;
+try {
+  const iconModule = require('./icon_drawing.js');
+  drawIcon = iconModule.drawIcon;
+  ICON_SIZES = iconModule.ICON_SIZES;
+} catch(e) {
+  // Inline fallback if module not found
+  const ICON_COLORS = { bg: '#1e1e2e', ring: '#89b4fa', clock: '#a6e3a1', ringAlpha: 'rgba(137,180,250,0.35)' };
+  ICON_SIZES = [16, 32, 48, 128];
+  drawIcon = function(ctx, size) {
+    const s = size, r = s / 2, lw = Math.max(1, s / 16);
+    ctx.beginPath(); ctx.arc(r, r, r, 0, Math.PI * 2); ctx.fillStyle = ICON_COLORS.bg; ctx.fill();
+    ctx.beginPath(); ctx.arc(r, r, r - lw * 0.6, 0, Math.PI * 2); ctx.strokeStyle = ICON_COLORS.ring; ctx.lineWidth = lw; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(lw, r); ctx.lineTo(s - lw, r); ctx.strokeStyle = ICON_COLORS.ringAlpha; ctx.lineWidth = lw * 0.8; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(r, lw); ctx.lineTo(r, s - lw); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(r, r, r * 0.45, r - lw, 0, 0, Math.PI * 2); ctx.strokeStyle = ICON_COLORS.ring; ctx.lineWidth = lw * 0.8; ctx.stroke();
+    const hourAngle = (10 / 12) * Math.PI * 2 - Math.PI / 2, minAngle = (10 / 60) * Math.PI * 2 - Math.PI / 2;
+    ctx.beginPath(); ctx.moveTo(r, r); ctx.lineTo(r + Math.cos(hourAngle) * r * 0.38, r + Math.sin(hourAngle) * r * 0.38); ctx.strokeStyle = ICON_COLORS.clock; ctx.lineWidth = lw * 1.4; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(r, r); ctx.lineTo(r + Math.cos(minAngle) * r * 0.55, r + Math.sin(minAngle) * r * 0.55); ctx.strokeStyle = ICON_COLORS.clock; ctx.lineWidth = lw * 0.9; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(r, r, lw * 1.2, 0, Math.PI * 2); ctx.fillStyle = ICON_COLORS.clock; ctx.fill();
+  };
+}
+
+const { createCanvas } = (() => { try { return require('canvas'); } catch(e) { return null; } })() || {};
 
 if (!createCanvas) {
   // Fallback: generate PNG programmatically without canvas
@@ -16,11 +38,10 @@ if (!createCanvas) {
 }
 
 function generateWithCanvas() {
-  const sizes = [16, 32, 48, 128];
   const dir = path.join(__dirname, 'icons');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir);
 
-  sizes.forEach(size => {
+  ICON_SIZES.forEach(size => {
     const canvas = createCanvas(size, size);
     const ctx = canvas.getContext('2d');
     drawIcon(ctx, size);
@@ -30,73 +51,14 @@ function generateWithCanvas() {
   });
 }
 
-function drawIcon(ctx, size) {
-  const s = size;
-  const r = s / 2;
-  const lw = Math.max(1, s / 16);
-
-  ctx.beginPath();
-  ctx.arc(r, r, r, 0, Math.PI * 2);
-  ctx.fillStyle = '#1e1e2e';
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.arc(r, r, r - lw * 0.6, 0, Math.PI * 2);
-  ctx.strokeStyle = '#89b4fa';
-  ctx.lineWidth = lw;
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(lw, r);
-  ctx.lineTo(s - lw, r);
-  ctx.strokeStyle = 'rgba(137,180,250,0.35)';
-  ctx.lineWidth = lw * 0.8;
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(r, lw);
-  ctx.lineTo(r, s - lw);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.ellipse(r, r, r * 0.45, r - lw, 0, 0, Math.PI * 2);
-  ctx.strokeStyle = '#89b4fa';
-  ctx.lineWidth = lw * 0.8;
-  ctx.stroke();
-
-  // Clock at 10:10 position (classic look)
-  const hourAngle = (10 / 12) * Math.PI * 2 - Math.PI / 2;
-  const minAngle  = (10 / 60) * Math.PI * 2 - Math.PI / 2;
-
-  ctx.beginPath();
-  ctx.moveTo(r, r);
-  ctx.lineTo(r + Math.cos(hourAngle) * r * 0.38, r + Math.sin(hourAngle) * r * 0.38);
-  ctx.strokeStyle = '#a6e3a1';
-  ctx.lineWidth = lw * 1.4;
-  ctx.lineCap = 'round';
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(r, r);
-  ctx.lineTo(r + Math.cos(minAngle) * r * 0.55, r + Math.sin(minAngle) * r * 0.55);
-  ctx.strokeStyle = '#a6e3a1';
-  ctx.lineWidth = lw * 0.9;
-  ctx.lineCap = 'round';
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(r, r, lw * 1.2, 0, Math.PI * 2);
-  ctx.fillStyle = '#a6e3a1';
-  ctx.fill();
 }
 
 // ---- Fallback: pure JS PNG generation ----
 function generatePNGs() {
-  const sizes = [16, 32, 48, 128];
   const dir = path.join(__dirname, 'icons');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir);
 
-  sizes.forEach(size => {
+  ICON_SIZES.forEach(size => {
     const pixels = renderIcon(size);
     const buf = encodePNG(size, size, pixels);
     fs.writeFileSync(path.join(dir, `icon${size}.png`), buf);
