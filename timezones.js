@@ -426,3 +426,11 @@ for (const tz of TIMEZONE_LIST) {
   if (tz.tad && !TZ_BY_TAD.has(tz.tad)) TZ_BY_TAD.set(tz.tad, tz);
   if (tz.value && !TZ_BY_VALUE.has(tz.value)) TZ_BY_VALUE.set(tz.value, tz);
 }
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
