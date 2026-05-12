@@ -22,7 +22,7 @@ let primaryIndex = 0;
 let timer = null;
 let timeFormat = '24h';
 let weatherCache = {};
-const WEATHER_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
 
 const dstCache = new Map();
 
@@ -64,9 +64,9 @@ function formatTime(tz, now) {
 }
 
 function getOffset(tz, date) {
-  const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
-  const tzDate  = new Date(date.toLocaleString('en-US', { timeZone: tz }));
-  return utcDate - tzDate;
+  const utc = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const local = new Date(date.toLocaleString('en-US', { timeZone: tz }));
+  return utc - local;
 }
 
 function tzUrl(tz) {
@@ -173,7 +173,7 @@ function renderList() {
       container.appendChild(div);
     }
   });
-  cachedItems = null;
+  cachedItems = container.querySelectorAll('.tz-item');
 }
 
 function tick() {

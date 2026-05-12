@@ -51,8 +51,6 @@ function generateWithCanvas() {
   });
 }
 
-}
-
 // ---- Fallback: pure JS PNG generation ----
 function generatePNGs() {
   const dir = path.join(__dirname, 'icons');

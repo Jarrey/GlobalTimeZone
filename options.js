@@ -54,6 +54,7 @@ function fuzzyFilter(query) {
 
 function renderRows() {
   tzList.innerHTML = '';
+  const fragment = document.createDocumentFragment();
   timezones.forEach((tz, i) => {
     const selectedLabel = getLabelForTimezoneEntry(tz);
     const row = document.createElement('div');
@@ -78,8 +79,9 @@ function renderRows() {
       <button class="del-btn" data-i="${i}" title="删除">
         <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
       </button>`;
-    tzList.appendChild(row);
+    fragment.appendChild(row);
   });
+  tzList.appendChild(fragment);
 
   // Bind events
   tzList.querySelectorAll('.tz-label-input').forEach(el => {
@@ -244,30 +246,32 @@ saveBtn.addEventListener('click', () => {
   });
 });
 
+function updateWeatherStatus() {
+  if (weatherApiKeyInput) weatherApiKeyInput.value = weatherApiKey;
+  if (weatherApiKey && weatherStatusEl) {
+    weatherStatusEl.textContent = 'API key set — weather data will refresh automatically.';
+  }
+}
+
 // Load saved data
-chrome.storage.sync.get(['timezones', 'primaryIndex', 'timeFormat'], result => {
+(async function loadSettings() {
+  const result = await new Promise(r => chrome.storage.sync.get(['timezones', 'primaryIndex', 'timeFormat'], r));
   timezones = result.timezones || DEFAULT_TZ;
   primaryIndex = result.primaryIndex || 0;
   timeFormat = result.timeFormat || '24h';
   const activeInput = document.querySelector(`input[name="timeFormat"][value="${timeFormat}"]`);
   if (activeInput) activeInput.checked = true;
-  chrome.storage.local.get('weatherApiKey', local => {
-    weatherApiKey = local.weatherApiKey || '';
-    if (!weatherApiKey) {
-      chrome.storage.sync.get('weatherApiKey', sync => {
-        if (sync.weatherApiKey) {
-          weatherApiKey = sync.weatherApiKey;
-          chrome.storage.local.set({ weatherApiKey });
-          chrome.storage.sync.remove('weatherApiKey');
-        }
-        if (weatherApiKeyInput) weatherApiKeyInput.value = weatherApiKey;
-        if (weatherApiKey && weatherStatusEl) weatherStatusEl.textContent = 'API key set — weather data will refresh automatically.';
-        renderRows();
-      });
-    } else {
-      if (weatherApiKeyInput) weatherApiKeyInput.value = weatherApiKey;
-      if (weatherApiKey && weatherStatusEl) weatherStatusEl.textContent = 'API key set — weather data will refresh automatically.';
-      renderRows();
+
+  const local = await new Promise(r => chrome.storage.local.get('weatherApiKey', r));
+  weatherApiKey = local.weatherApiKey || '';
+  if (!weatherApiKey) {
+    const sync = await new Promise(r => chrome.storage.sync.get('weatherApiKey', r));
+    if (sync.weatherApiKey) {
+      weatherApiKey = sync.weatherApiKey;
+      chrome.storage.local.set({ weatherApiKey });
+      chrome.storage.sync.remove('weatherApiKey');
     }
-  });
-});
+  }
+  updateWeatherStatus();
+  renderRows();
+})();

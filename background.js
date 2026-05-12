@@ -74,12 +74,12 @@ async function refreshWeather(force = false) {
     return;
   }
 
-  for (const tz of allTimezones) {
+  const tasks = allTimezones.map(async (tz) => {
     const key = tz.tad || tz.zone;
     const cached = cache[key];
     if (!force && cached && (now - cached.fetchedAt) < WEATHER_CACHE_TTL) {
       updated[key] = cached;
-      continue;
+      return;
     }
     const data = await fetchWeatherForZone(tz, apiKey);
     if (data) {
@@ -87,7 +87,8 @@ async function refreshWeather(force = false) {
     } else if (cached) {
       updated[key] = cached;
     }
-  }
+  });
+  await Promise.allSettled(tasks);
 
   await chrome.storage.local.set({ weatherCache: updated });
 }
@@ -180,9 +181,5 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 });
 
-// Initial call on service worker startup
-updateIcon();
-scheduleNextMinute();
-scheduleWeather();
-refreshWeather();
+
 

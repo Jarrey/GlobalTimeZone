@@ -427,6 +427,8 @@ for (const tz of TIMEZONE_LIST) {
   if (tz.value && !TZ_BY_VALUE.has(tz.value)) TZ_BY_VALUE.set(tz.value, tz);
 }
 
+const WEATHER_CACHE_TTL = 30 * 60 * 1000;
+
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
