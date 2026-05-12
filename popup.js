@@ -176,10 +176,6 @@ function renderList() {
   cachedItems = null;
 }
 
-function escapeHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
 function tick() {
   if (!cachedItems) cachedItems = document.querySelectorAll('.tz-item');
   const now = new Date();

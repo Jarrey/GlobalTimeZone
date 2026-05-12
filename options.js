@@ -18,8 +18,7 @@ const DEFAULT_TZ = [
   { zone: 'Asia/Tokyo',          label: '东京' },
 ];
 
-// escHtml alias for escapeHtml from timezones.js
-const escHtml = escapeHtml;
+
 
 function getLabelForZone(zone) {
   return TZ_BY_VALUE.get(zone)?.label || zone;
@@ -65,11 +64,11 @@ function renderRows() {
         <svg viewBox="0 0 24 24"><path d="M3 15h18v-2H3v2zm0 4h18v-2H3v2zm0-8h18V9H3v2zm0-6v2h18V5H3z"/></svg>
       </div>
       <div class="tz-row-content">
-        <input class="tz-label-input" type="text" placeholder="显示名称" value="${escHtml(tz.label || '')}" data-i="${i}" />
+        <input class="tz-label-input" type="text" placeholder="显示名称" value="${escapeHtml(tz.label || '')}" data-i="${i}" />
         <div class="tz-zone-picker">
           <input class="tz-zone-search" type="text" placeholder="搜索时区城市…"
-            value="${escHtml(selectedLabel)}" autocomplete="off" data-i="${i}"
-            data-selected-label="${escHtml(selectedLabel)}" />
+            value="${escapeHtml(selectedLabel)}" autocomplete="off" data-i="${i}"
+            data-selected-label="${escapeHtml(selectedLabel)}" />
           <div class="tz-zone-dropdown hidden"></div>
         </div>
       </div>
@@ -100,7 +99,7 @@ function renderRows() {
       }
       const selectedLabel = input.dataset.selectedLabel || '';
       dropdown.innerHTML = results.map(t =>
-        `<div class="tz-zone-option${t.value === timezones[idx].zone && t.label === selectedLabel ? ' active' : ''}" data-value="${escHtml(t.value)}" data-label="${escHtml(t.label)}" data-tad="${escHtml(t.tad || '')}">${escHtml(t.label)}</div>`
+        `<div class="tz-zone-option${t.value === timezones[idx].zone && t.label === selectedLabel ? ' active' : ''}" data-value="${escapeHtml(t.value)}" data-label="${escapeHtml(t.label)}" data-tad="${escapeHtml(t.tad || '')}">${escapeHtml(t.label)}</div>`
       ).join('');
       dropdown.querySelectorAll('.tz-zone-option').forEach(opt => {
         opt.addEventListener('mousedown', e => {
